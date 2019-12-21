@@ -116,6 +116,8 @@ function county_style(feature){
 function highlightFeature(e) {
     var layer = e.target;
 
+    console.log(layer);
+
     layer.setStyle({
         weight: 1,
         color: '#000',
@@ -154,7 +156,7 @@ function on_each_feature(feature, layer) {
   });
 }
 
-L.shapefile('data/US_By_County_2000_to_2009.zip', {
+L.shapefile('https://rcravens.github.io/maps-leaflet-examples/data/US_By_County_2000_to_2009.zip', {
   style: county_style,
   onEachFeature: on_each_feature
 }).addTo(mymap);
