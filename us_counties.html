@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>US Cities Example</title>
+
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!- leaflet -->	
+  <link rel="stylesheet" href="libs/leaflet/leaflet.css">
+  <script src="libs/leaflet/leaflet.js"></script>
+  <script src="libs/leaflet/shp.js"></script>
+  <script src="libs/leaflet/leaflet.shpfile.js"></script>
+
+
+	<style>
+    body {
+        padding: 0;
+        margin: 0;
+    }
+    html, body, #map {
+        height: 100%;
+        width: 100%;
+    }
+
+    .info { 
+      padding: 6px 8px; 
+      font: 14px/16px Arial, Helvetica, sans-serif; 
+      background: white; 
+      background: rgba(255,255,255,0.8); 
+      box-shadow: 0 0 15px rgba(0,0,0,0.2); 
+      border-radius: 5px; 
+    } 
+    .info h4 { 
+      margin: 0 0 5px; 
+      color: #777; 
+    }
+    .legend { 
+      text-align: left; 
+      line-height: 18px; 
+      color: #555; 
+    } 
+    .legend i { 
+      width: 18px; 
+      height: 18px; 
+      float: left; 
+      margin-right: 8px; 
+      opacity: 0.7; 
+    }
+	</style>
+</head>
+<body>
+
+<div id='map'></div>
+
+<script type="text/javascript">
+
+
+// Create the map with layers
+//
+var default_center = [37.8, -96];
+var default_zoom = 5;
+var mymap = L.map('map', {
+  center: default_center,
+  zoom: default_zoom,
+});
+
+// Set up the OSM layer
+L.tileLayer(
+  'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    id: 'mapbox/light-v10'
+  }).addTo(mymap);
+
+var max_d = 16181092598; //377030936019 (acutal max if you allow the really big alaskan counties);
+
+var colors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabebe', '#469990', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075'];
+
+var delta_d = max_d / colors.length;
+
+function getColor(d) {
+
+    var index = parseInt(d / delta_d);
+
+    if (index >= colors.length){
+      index = colors.length - 1;
+    }
+
+    return colors[index]
+}
+
+//var max_area = 0
+//var min_area = 9999999999;
+
+function county_style(feature){
+
+/*  var area = feature.properties.ALAND;
+  if (area > max_area){
+    max_area = area;
+  }
+  if (area < min_area){
+    min_area = area;
+  }*/
+
+  return {
+    fillColor: getColor(feature.properties.ALAND),
+    weight: 1,
+    opactiy: 1,
+    color: 'white',
+    fillOpacity: 0.5
+  };
+}
+
+function highlightFeature(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        weight: 1,
+        color: '#000',
+        fillOpacity: 0.8
+    });
+
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+        layer.bringToFront();
+    }
+
+
+    info.update(layer.feature.properties);
+}
+
+function resetHighlight(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+      weight: 1,
+      color: '#fff',
+      fillOpacity: 0.5
+    });
+
+    info.update();
+}
+
+function zoomToFeature(e) {
+    mymap.fitBounds(e.target.getBounds());
+}
+
+function on_each_feature(feature, layer) {
+  layer.on({
+      mouseover: highlightFeature,
+      mouseout: resetHighlight,
+      click: zoomToFeature
+  });
+}
+
+L.shapefile('https://rcravens.github.io/resources/tl_2017_us_county.zip', {
+  style: county_style,
+  onEachFeature: on_each_feature
+}).addTo(mymap);
+
+
+// Create info control used to show data on mouseover event
+//
+var info = L.control({position: 'bottomleft'});
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+info.update = function( props ) {
+
+    var html = '<h4>US County Information</h4>';
+    if ( props ) {
+      html += '<ul>';
+      for(var prop_name in props){
+        var value = prop_name=='ALAND' || prop_name=='AWATER' ? parseInt(props[prop_name]/1000000) + ' km<sup>2</sup>' : props[prop_name];
+        html += '<li>' + prop_name + ': ' + value + '</li>';
+      }
+      html += '</ul>';
+
+    } else {
+      html += 'Hover over a county...';
+    }
+
+    this._div.innerHTML = html;
+};
+
+info.addTo(mymap);
+
+// Create a legend for the map
+//
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend');
+    div.innerHTML = '<h4>County Area Legend (km<sup>2</sup>)</h4>';
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < colors.length; i++) {
+        var min_val = parseInt((delta_d * i)/1000000);
+        var max_val = parseInt((delta_d * (i+1))/1000000);
+        div.innerHTML += '<i style="background:' + colors[i] + '"></i> ';
+        div.innerHTML += min_val;
+        if(i<colors.length - 1){
+          div.innerHTML += ' &ndash; ' + max_val;
+        } else {
+          div.innerHTML += '+';
+        }
+        div.innerHTML += '<br />';
+    }
+
+    return div;
+};
+
+legend.addTo(mymap);
+
+
+</script>
+
+
+
+</body>
+</html>

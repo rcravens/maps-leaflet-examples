@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>US Cities Example</title>
+
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!- leaflet -->	
+  <link rel="stylesheet" href="libs/leaflet/leaflet.css">
+  <script src="libs/leaflet/leaflet.js"></script>
+
+
+	<style>
+    body {
+        padding: 0;
+        margin: 0;
+    }
+    html, body, #map {
+        height: 100%;
+        width: 100%;
+    }
+
+    .info { 
+      padding: 6px 8px; 
+      font: 14px/16px Arial, Helvetica, sans-serif; 
+      background: white; 
+      background: rgba(255,255,255,0.8); 
+      box-shadow: 0 0 15px rgba(0,0,0,0.2); 
+      border-radius: 5px; 
+    } 
+    .info h4 { 
+      margin: 0 0 5px; 
+      color: #777; 
+    }
+    .legend { 
+      text-align: left; 
+      line-height: 18px; 
+      color: #555; 
+    } 
+    .legend i { 
+      width: 8px; 
+      height: 8px; 
+      border: 1px solid #000;
+      border-radius: 5px;
+      float: left; 
+      margin-right: 8px; 
+    }
+	</style>
+</head>
+<body>
+
+<div id='map'></div>
+
+<script type="text/javascript" src="data/us-cities.js"></script>
+
+<script type="text/javascript">
+
+
+// Create info control used to show data on mouseover event
+//
+var info = L.control({position: 'bottomleft'});
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+info.update = function (city_data) {
+
+    var html = '<h4>US City Information</h4>';
+    if ( city_data ) {
+      html += '<strong>' + city_data.city + ', ' + city_data.state + '</strong><br />';
+      html += '<ul>';
+      html += '<li>type: ' + city_data.type + '</li>';
+      html += '<li>poplation rank: ' + city_data.rank + '</li>';
+      html += '<li>population: ' + city_data.population + '</li>';
+      html += '<li>growth from 2000 to 2013: ' + city_data.growth_from_2000_to_2013 + '</li>';
+      html += '<li>latitude: ' + city_data.latitude + '</li>';
+      html += '<li>longitude: ' + city_data.longitude + '</li>';  
+      html += '</ul>';
+
+    } else {
+      html += 'Hover over a city...';
+    }
+
+    this._div.innerHTML = html;
+};
+
+
+function highlightFeature(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        weight: 5,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.7
+    });
+
+    info.update(layer.options.city_data);
+}
+
+function resetHighlight(e) {  
+    var layer = e.target;
+
+    layer.setStyle({
+      weight: 1,
+      color: '#000',
+      fillOpacity: 1
+    });
+
+    info.update();
+}
+
+// Create custom circle marker to have city_data property
+//
+var custom_circle_marker = L.CircleMarker.extend({
+  options: {
+    city_data: 'City Data'
+  }
+});
+
+// Create the clinic / competitors layers
+//
+var clinics = L.layerGroup();
+var competitors = L.layerGroup();
+
+for(var i=0; i<us_cities.length; i++){
+	city = us_cities[i];
+  
+  var team = clinics;
+  var fill_color = '#00ff00';
+  city.type = 'Clinic';
+
+  if(i%2==0){
+
+    team = competitors;
+    fill_color = '#ff0000';
+    city.type = 'Competitor';
+  }
+
+  var marker = new custom_circle_marker([city.latitude, city.longitude], {
+    radius: 5,
+    fillColor: fill_color,
+    color: '#000',
+    weight: 1,
+    opacity: 1,
+    fillOpacity: 1,
+    pane: 'markerPane',
+    city_data: city
+  }).on({
+    mouseover: highlightFeature,
+    mouseout: resetHighlight,
+
+  }).addTo(team);
+}
+
+// Create the different map types
+//
+var mbAttr = 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>';
+var mbUrl = 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+
+
+var grayscale   = L.tileLayer(mbUrl, {id: 'mapbox/light-v10', attribution: mbAttr});
+var streets  = L.tileLayer(mbUrl, {id: 'mapbox/streets-v11',   attribution: mbAttr});
+var satellite  = L.tileLayer(mbUrl, {id: 'mapbox/satellite-v9',   attribution: mbAttr});
+var outdoors = L.tileLayer(mbUrl, {id: 'mapbox/outdoors-v11',   attribution: mbAttr});
+var dark = L.tileLayer(mbUrl, {id: 'mapbox/dark-v10',   attribution: mbAttr});
+
+
+// Create the map with layers
+//
+var default_center = [37.8, -96];
+var default_zoom = 5;
+var mymap = L.map('map', {
+	center: default_center,
+  zoom: default_zoom,
+  layers: [clinics, competitors] // turn on clinics / competitors layer
+});
+
+// Add the info dialog to the map
+//
+info.addTo(mymap);
+
+// Create a legend for the map
+//
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend');
+
+    div.innerHTML = '<h4>Legend</h4><i style="background:#00ff00;"></i> Clinic<br><i style="background:#ff0000;"></i> Competitor';
+
+    return div;
+};
+
+legend.addTo(mymap);
+
+var baseMaps = {
+	  "Dark": dark,
+    "Grayscale": grayscale,
+    "Outdoors": outdoors,
+    "Satellite": satellite,
+    "Streets": streets
+};
+
+var overlayMaps = {
+    "Clinics": clinics,
+    "Competitors": competitors
+};
+
+L.control.layers(baseMaps, overlayMaps).addTo(mymap);
+grayscale.addTo(mymap); // set the gray scale as the default
+
+
+</script>
+
+
+
+</body>
+</html>
