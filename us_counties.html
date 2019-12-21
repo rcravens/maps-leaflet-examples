@@ -154,7 +154,7 @@ function on_each_feature(feature, layer) {
   });
 }
 
-L.shapefile('https://rcravens.github.io/resources/tl_2017_us_county.zip', {
+L.shapefile('data/tl_2017_us_county.zip', {
   style: county_style,
   onEachFeature: on_each_feature
 }).addTo(mymap);
