@@ -3,7 +3,7 @@
 <html>
 <head>
 	
-	<title>US Cities Example</title>
+	<title>Cancer Rates Lake County Example</title>
 
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,8 +60,8 @@
 
 // Create the map with layers
 //
-var default_center = [37.8, -96];
-var default_zoom = 5;
+var default_center = [42.31, -88.0];
+var default_zoom = 11;
 var mymap = L.map('map', {
   center: default_center,
   zoom: default_zoom,
@@ -80,32 +80,25 @@ var colors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', 
 
 var delta_d = max_d / colors.length;
 
-function getColor(d) {
+var color_lut = {};
+function getColor(zip) {
 
-    var index = parseInt(d / delta_d);
-
-    if (index >= colors.length){
-      index = colors.length - 1;
+    if(zip in color_lut){
+      return color_lut[zip];
     }
 
-    return colors[index]
-}
+    var num_props = Object.keys(color_lut).length;
+    var index = num_props % colors.length;
 
-//var max_area = 0
-//var min_area = 9999999999;
+    color_lut[zip] = colors[index];
+
+    return color_lut[zip];
+}
 
 function county_style(feature){
 
-/*  var area = feature.properties.ALAND;
-  if (area > max_area){
-    max_area = area;
-  }
-  if (area < min_area){
-    min_area = area;
-  }*/
-
   return {
-    fillColor: getColor(feature.properties.ALAND),
+    fillColor: getColor(feature.properties.ZIP),
     weight: 1,
     opactiy: 1,
     color: 'white',
@@ -115,8 +108,6 @@ function county_style(feature){
 
 function highlightFeature(e) {
     var layer = e.target;
-
-    console.log(layer);
 
     layer.setStyle({
         weight: 1,
@@ -191,34 +182,6 @@ info.update = function( props ) {
 };
 
 info.addTo(mymap);
-
-// Create a legend for the map
-//
-var legend = L.control({position: 'bottomright'});
-
-legend.onAdd = function (map) {
-
-    var div = L.DomUtil.create('div', 'info legend');
-    div.innerHTML = '<h4>County Area Legend (km<sup>2</sup>)</h4>';
-
-    // loop through our density intervals and generate a label with a colored square for each interval
-    for (var i = 0; i < colors.length; i++) {
-        var min_val = parseInt((delta_d * i)/1000000);
-        var max_val = parseInt((delta_d * (i+1))/1000000);
-        div.innerHTML += '<i style="background:' + colors[i] + '"></i> ';
-        div.innerHTML += min_val;
-        if(i<colors.length - 1){
-          div.innerHTML += ' &ndash; ' + max_val;
-        } else {
-          div.innerHTML += '+';
-        }
-        div.innerHTML += '<br />';
-    }
-
-    return div;
-};
-
-legend.addTo(mymap);
 
 
 </script>
